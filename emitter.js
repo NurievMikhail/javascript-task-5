@@ -7,10 +7,6 @@
 getEmitter.isStar = true;
 module.exports = getEmitter;
 
-function bind(func, context) {
-    return () => (func.apply(context, arguments));
-}
-
 /**
  * Возвращает новый emitter
  * @returns {Object}
@@ -27,12 +23,12 @@ function getEmitter() {
          * @returns {Object}
          */
         on: function (event, context, handler) {
-            if (typeof this.events[event] === 'undefined') {
+            if (this.events[event] === undefined) {
                 this.events[event] = [];
             }
             this.events[event].push({
                 context,
-                handler: bind(handler, context)
+                handler: handler.bind(context)
             });
 
             return this;
@@ -45,9 +41,8 @@ function getEmitter() {
          * @returns {Object}
          */
         off: function (event, context) {
-            let selectedEvents = Object.keys(this.events)
-                .filter((verifiableEvent) => (verifiableEvent
-                    .indexOf(`${event}.`) === 0 || event === verifiableEvent));
+            const selectedEvents = Object.keys(this.events)
+                .filter((eventName) => ((`${eventName}.`).startsWith(`${event}.`)));
             selectedEvents.forEach((selectedEvent) => {
                 this.events[selectedEvent] = this.events[selectedEvent].filter(
                     (student) => (student.context !== context));
@@ -62,13 +57,14 @@ function getEmitter() {
          * @returns {Object}
          */
         emit: function (event) {
-            let selectedEvents = [];
+            const selectedEvents = [];
             const deep = (event.indexOf('.') !== -1) ? (event.split('.').length) : 0;
+            let transmittedEvent = event;
             for (let i = 0; i < deep + 1; i++) {
-                if (event in this.events) {
-                    selectedEvents.push(event);
+                if (transmittedEvent in this.events) {
+                    selectedEvents.push(transmittedEvent);
                 }
-                event = event.slice(0, event.lastIndexOf('.'));
+                transmittedEvent = transmittedEvent.slice(0, transmittedEvent.lastIndexOf('.'));
             }
             selectedEvents.forEach((selectedEvent) => {
                 this.events[selectedEvent].forEach(student => {
@@ -92,12 +88,12 @@ function getEmitter() {
             if (times <= 0) {
                 this.on(event, context, handler);
             } else {
-                let currentTimes = 0;
+                let callCount = 0;
                 this.on(event, context, () => {
-                    if (currentTimes < times) {
-                        bind(handler, context)();
+                    if (callCount < times) {
+                        handler.bind(context)();
                     }
-                    currentTimes++;
+                    callCount++;
                 });
             }
 
@@ -117,12 +113,12 @@ function getEmitter() {
             if (frequency <= 0) {
                 this.on(event, context, handler);
             } else {
-                let currentFrequency = 0;
+                let callCount = 0;
                 this.on(event, context, () => {
-                    if (currentFrequency % frequency === 0) {
-                        bind(handler, context)();
+                    if (callCount % frequency === 0) {
+                        handler.bind(context)();
                     }
-                    currentFrequency++;
+                    callCount++;
                 });
             }
 
